@@ -22,18 +22,21 @@ class AdminDashboard:
             print("="*50)
             print("1. Add New Asset")
             print("2. View All Assets")
-            print("3. View Pending Requests")
-            print("4. Logout")
+            print("3. Assign Auditor to New Requests")
+            print("4. Finalize Audited Requests")
+            print("5. Logout")
 
-            choice = input("Enter your choice (1-3): ")
+            choice = input("Enter your choice (1-5): ")
 
             if choice == '1':
                 self._add_new_asset()
             elif choice == '2':
                 self._view_all_assets()
             elif choice == '3':
-                self._view_pending_requests()
+                self._assign_auditor()
             elif choice == '4':
+                self._finalize_requests()
+            elif choice == '5':
                 print("Logging out...")
                 break  
             else:
@@ -71,14 +74,34 @@ class AdminDashboard:
         else:
             print(tabulate(asset_list, headers="keys", tablefmt="grid"))
 
-    def _view_pending_requests(self):
-        print("\n--- PENDING ASSET REQUESTS ---")
+    def _assign_auditor(self):
+        print("\n--- NEW ASSET REQUESTS ---")
         requests = self.allocation_controller.get_pending_requests(token=self.token)
 
         if not requests:
-            print("No pending requests.")
+            print("No new requests at this time.")
+            return
+
         print(tabulate(requests, headers="keys", tablefmt="grid"))
 
-        action = input("\nEnter AllocationId to approve, or press Enter to cancel: ")
+        alloc_id = input("\nEnter AllocationId to assign an auditor (or Enter to cancel): ")
+
+        if alloc_id.isdigit():
+            auditor_id = input("Enter the UserId of the Employee to audit this asset:")
+            if auditor_id.isdigit():
+                self.allocation_controller.assign_auditor(int(alloc_id), int(auditor_id), token=self.token)
+
+    def _finalize_requests(self):
+        print("\n--- AUDITED REQUESTS READY FOR FINAL APPROVAL ---")
+        requests = self.allocation_controller.get_audited_requests(token=self.token)
+
+        if not requests:
+            print("No audited requests waiting for approval")
+            return
+
+        print(tabulate(requests, headers="keys", tablefmt="grid"))
+
+        action = input("\nEnter AllocationId to finalize approval (or Enter to cancel): ")
+
         if action.isdigit():
             self.allocation_controller.approve_request(int(action), token=self.token)

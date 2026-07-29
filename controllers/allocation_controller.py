@@ -58,10 +58,96 @@ class AllocationController:
                 cursor.close()
             self.db.disconnect()
 
+
+    @jwt_required(allowed_roles=['ADMIN'])
+    def assign_auditor(self, allocation_id, auditor_id, token=None):
+        try:
+            alloc = self.db.fetch_one(
+                "SELECT UserId FROM AssetAllocations WHERE AllocationId = %s AND Status = 'REQUESTED'", (allocation_id,)
+            )
+
+            if not alloc:
+                print("Request not found or already assigned.")
+                return False
+
+            if alloc['UserId'] == auditor_id:
+                print("\nSECURITY BLOCK: An employee cannot be assigned to audit their own asset request!")
+                return False
+
+            self.db.execute_query(
+                "UPDATE AssetAllocations SET Status = 'PENDING_AUDIT', AuditorId = %s WHERE AllocationId = %s AND Status = 'REQUESTED'", (auditor_id, allocation_id) 
+            )
+
+            print(f"Auditor {auditor_id} assigned successfully! Status is now PENDING_AUDIT.")
+            return True
+        except Exception as e:
+            print("Failed to assign auditor.")
+            log.error(f"Assign auditor error: {e}")
+            return False
+
+    def get_audit_tasks(self, auditor_id):
+        query = """
+            SELECT al.AllocationId, u.Name AS Requester, a.AssetName, a.AssetNo 
+            FROM AssetAllocations al
+            JOIN Users u ON al.UserId = u.UserId
+            JOIN Assets a ON al.AssetId = a.AssetId
+            WHERE al.AuditorId = %s AND al.Status = 'PENDING_AUDIT'
+        """
+
+        try:
+            self.db.connect()
+            cursor = self.db.connection.cursor(dictionary=True)
+            cursor.execute(query, (auditor_id,))
+            return cursor.fetchall()
+        except Exception as e:
+            log.error(f"Failed to fetch audit tasks: {e}")
+            return []
+        finally:
+            if 'cursor' in locals() and cursor:
+                cursor.close()
+            self.db.disconnect()
+
+    def submit_audit_result(self, allocation_id, auditor_id, is_approved):
+        new_status = 'AUDIT_APPROVED' if is_approved else 'AUDIT_DENIED'
+
+        try:
+            self.db.execute_query(
+                "UPDATE AssetAllocations SET Status = %s WHERE AllocationId = %s AND AuditorId = %s", (new_status, allocation_id, auditor_id)
+            )
+            print(f"Audit submitted! Status updated to {new_status}.")
+            return True
+        except Exception as e:
+            print("Failed to submit audit.")
+            log.error(f"Submit audit error: {e}")
+            return False
+
+    @jwt_required(allowed_roles=['ADMIN'])
+    def get_audited_requests(self, token=None):
+        query = """
+            SELECT al.AllocationId, u.Name AS Requester, au.Name AS Auditor, a.AssetName, a.AssetNo 
+            FROM AssetAllocations al
+            JOIN Users u ON al.UserId = u.UserId
+            JOIN Users au ON al.AuditorId = au.UserId
+            JOIN Assets a ON al.AssetId = a.AssetId
+            WHERE al.Status = 'AUDIT_APPROVED'
+        """
+
+        try:
+            self.db.connect()
+            cursor = self.db.connection.cursor(dictionary=True)
+            cursor.execute(query)
+            return cursor.fetchall()
+        except Exception as e:
+            log.error(f"Failed to fetch audited requests: {e}")
+            return []
+        finally:
+            if 'cursor' in locals() and cursor: cursor.close()
+            self.db.disconnect()
+
     @jwt_required(allowed_roles=['ADMIN'])
     def approve_request(self, allocation_id, token=None):
         try:
-            alloc = self.db.fetch_one("SELECT AssetId FROM AssetAllocations WHERE AllocationId = %s AND Status = 'REQUESTED'", (allocation_id,))
+            alloc = self.db.fetch_one("SELECT AssetId FROM AssetAllocations WHERE AllocationId = %s AND Status = 'AUDIT_APPROVED'", (allocation_id,))
 
             if not alloc: 
                 print("Requests not found")

@@ -24,7 +24,8 @@ class EmployeeDashboard:
             print("2. Request New Asset")
             print("3. Return Asset")
             print("4. View My Allocated Assets")
-            print("5. Logout")
+            print("5. View Audit Tasks")
+            print("6. Logout")
 
             choice = input("Enter your choice (1-6): ")
 
@@ -37,6 +38,8 @@ class EmployeeDashboard:
             elif choice == '4':
                 self._view_my_assets()
             elif choice == '5':
+                self._view_audit_tasks()
+            elif choice == '6':
                 print("Logging out...")
                 break
             else:
@@ -94,3 +97,19 @@ class EmployeeDashboard:
             return
 
         self.allocation_controller.return_asset(asset_no, self.user.user_id)
+
+    def _view_audit_tasks(self):
+        print("\n---MY PENDING AUDITS ---")
+        tasks = self.allocation_controller.get_audit_tasks(self.user.user_id)
+
+        if not tasks:
+            print("No pending audit tasks.")
+            return 
+
+        print(tabulate(tasks, headers="keys", tablefmt="grid"))
+
+        action = input("\nEnter AllocationId to process, or press Enter to cancel: ")
+        if action.isdigit():
+            decision = input("Is the asset in good condition? (y/n): ")
+            is_approves = decision.lower() == 'y'
+            self.allocation_controller.submit_audit_result(int(action), self.user.user_id, is_approves)
