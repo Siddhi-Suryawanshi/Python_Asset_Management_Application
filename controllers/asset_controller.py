@@ -22,7 +22,7 @@ class AssetController:
             cursor = self.db.connection.cursor(dictionary=True)
             cursor.execute(query)
             
-            # FIX: Fetch all rows into memory first to avoid unbuffered cursor crashes
+            # Fetch all rows into memory first to avoid unbuffered cursor crashes
             rows = cursor.fetchall()
             for row in rows:
                 yield row
