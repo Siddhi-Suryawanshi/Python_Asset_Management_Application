@@ -25,9 +25,10 @@ class EmployeeDashboard:
             print("3. Return Asset")
             print("4. View My Allocated Assets")
             print("5. View Audit Tasks")
-            print("6. Logout")
+            print("6. Raise Service Ticket")
+            print("7. Logout")
 
-            choice = input("Enter your choice (1-6): ")
+            choice = input("Enter your choice (1-7): ")
 
             if choice == '1':
                 self._view_catalog()
@@ -40,6 +41,8 @@ class EmployeeDashboard:
             elif choice == '5':
                 self._view_audit_tasks()
             elif choice == '6':
+                self._raise_ticket()
+            elif choice == '7':
                 print("Logging out...")
                 break
             else:
@@ -113,3 +116,20 @@ class EmployeeDashboard:
             decision = input("Is the asset in good condition? (y/n): ")
             is_approves = decision.lower() == 'y'
             self.allocation_controller.submit_audit_result(int(action), self.user.user_id, is_approves)
+
+    def _raise_ticket(self):
+        print("\n--- RAISE SERVICE TICKET ---")
+        self._view_my_assets()
+
+        asset_no = input("Enter the Asset Number you want to raise a ticket for (e.g., TAG-001) or 'cancel': ")
+
+        if asset_no.lower() == 'cancel':
+            return
+
+        print("\nIssue Type: 1=Malfunction, 2=REPAIR")
+        issue_choice = input("Select Issue Type (1-2): ")
+        issue_type = 'MALFUNCTION' if issue_choice == '1' else 'REPAIR'
+
+        description = input("Describe the issue: ")
+
+        self.allocation_controller.raise_service_ticket(asset_no, self.user.user_id, issue_type, description)
