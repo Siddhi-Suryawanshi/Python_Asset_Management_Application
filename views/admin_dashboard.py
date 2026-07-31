@@ -24,9 +24,10 @@ class AdminDashboard:
             print("2. View All Assets")
             print("3. Assign Auditor to New Requests")
             print("4. Finalize Audited Requests")
-            print("5. Logout")
+            print("5. View Inventory Summary")
+            print("6. Logout")
 
-            choice = input("Enter your choice (1-5): ")
+            choice = input("Enter your choice (1-6): ")
 
             if choice == '1':
                 self._add_new_asset()
@@ -37,8 +38,10 @@ class AdminDashboard:
             elif choice == '4':
                 self._finalize_requests()
             elif choice == '5':
+                self._view_summary()
+            elif choice == '6':
                 print("Logging out...")
-                break  
+                break
             else:
                 print("Invalid choice.")
 
@@ -86,10 +89,22 @@ class AdminDashboard:
 
         alloc_id = input("\nEnter AllocationId to assign an auditor (or Enter to cancel): ")
 
+
         if alloc_id.isdigit():
+            # NEW: Fetch and print the user directory before asking for the ID
+            print("\n--- AVAILABLE EMPLOYEES ---")
+            employees = self.allocation_controller.get_employee_list(token=self.token)
+            if employees:
+                 print(tabulate(employees, headers="keys", tablefmt="simple"))
+            else:
+                 print("Warning: No employees found in the system to assign!")
+                 return
+            
             auditor_id = input("Enter the UserId of the Employee to audit this asset:")
             if auditor_id.isdigit():
                 self.allocation_controller.assign_auditor(int(alloc_id), int(auditor_id), token=self.token)
+
+        
 
     def _finalize_requests(self):
         print("\n--- AUDITED REQUESTS READY FOR FINAL APPROVAL ---")
@@ -105,3 +120,12 @@ class AdminDashboard:
 
         if action.isdigit():
             self.allocation_controller.approve_request(int(action), token=self.token)
+
+    def _view_summary(self, token=None):
+        print("\n--- GLOBAL INVENTORY SUMMARY ---")
+        summary_data = self.asset_controller.get_inventory_summary(token=self.token)
+
+        if not summary_data:
+            print("No inventory data available.")
+        else:
+            print(tabulate(summary_data, headers="keys", tablefmt="fancy_grid"))

@@ -217,3 +217,19 @@ class AllocationController:
             print("\nFailed to return asset.")
             log.error(f"Asset return error: {e}")
             return False
+
+    @jwt_required(allowed_roles=['ADMIN'])
+    def get_employee_list(self, token=None):
+        query = "SELECT UserId, Name, Email FROM Users WHERE Role = 'EMPLOYEE'"
+        try:
+            self.db.connect()
+            cursor = self.db.connection.cursor(dictionary=True)
+            cursor.execute(query)
+            return cursor.fetchall()
+        except Exception as e:
+            log.error(f"Failed to fetch employee list: {e}")
+            return []
+        finally:
+            if 'cursor' in locals() and cursor:
+                cursor.close()
+            self.db.disconnect()

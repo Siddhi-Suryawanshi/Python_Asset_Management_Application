@@ -89,3 +89,32 @@ class AssetController:
             print("\n❌ Failed to add asset. Check if Asset Number already exists.")
             log.error(f"Failed to add asset: {e}")
             return False
+
+    @jwt_required(allowed_roles=['ADMIN'])
+    def get_inventory_summary(self, token=None):
+        """Fetches the bulk count of specific hardware models."""
+        query = """
+            SELECT 
+                c.CategoryName,
+                a.AssetName,
+                COUNT(*) as TotalOwned,
+                SUM(CASE WHEN a.Status = 'AVAILABLE' THEN 1 ELSE 0 END) as TotalAvailable,
+                SUM(CASE WHEN a.Status = 'ALLOCATED' THEN 1 ELSE 0 END) as TotalAllocated
+            FROM Assets a
+            JOIN AssetCategories c ON a.CategoryId = c.CategoryId
+            GROUP BY c.CategoryName, a.AssetName
+            ORDER BY c.CategoryName, a.AssetName
+        """
+
+        try:
+            self.db.connect()
+            cursor = self.db.connection.cursor(dictionary=True)
+            cursor.execute(query)
+            return cursor.fetchall()
+        except Exception as e:
+            log.error(f"Failed to fetch detailed inventory summary: {e}")
+            return []
+        finally:
+            if 'cursor' in locals() and cursor:
+                cursor.close()
+            self.db.disconnect()
